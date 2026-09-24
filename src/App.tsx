@@ -5,6 +5,7 @@ import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { AuthModal } from './components/AuthModal';
 import { SubscriptionPaywall } from './components/SubscriptionPaywall';
 import { InstallAppModal } from './components/InstallAppModal';
+import { SignInPage } from './components/SignInPage';
 import { QuestionsView } from './components/student/QuestionsView';
 import { VideosView } from './components/student/VideosView';
 import { NotesView } from './components/student/NotesView';
@@ -39,7 +40,7 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-  const [currentUser, setUserState] = useState<User>(getCurrentUser());
+  const [currentUser, setUserState] = useState<User | null>(getCurrentUser());
   const [activeTab, setActiveTab] = useState<'questions' | 'videos' | 'notes' | 'ai-tutor' | 'admin' | 'subscription' | 'profile'>('questions');
 
   // Content state from storage
@@ -117,7 +118,7 @@ export default function App() {
 
   // Auto-sync student subscription status with backend so approval takes effect across devices
   useEffect(() => {
-    if (isAdmin || !activeUser.email) return;
+    if (!currentUser || isAdmin || !activeUser.email) return;
 
     const syncStatus = async () => {
       try {
@@ -144,14 +145,17 @@ export default function App() {
     syncStatus();
     const interval = setInterval(syncStatus, 8000);
     return () => clearInterval(interval);
-  }, [activeUser.id, activeUser.email, activeUser.subscription?.status, isAdmin]);
+  }, [currentUser, activeUser.id, activeUser.email, activeUser.subscription?.status, isAdmin]);
 
   // Refresh content from storage on tab change or updates
   const refreshContent = () => {
     setQuestions(getQuestions());
     setVideos(getVideos());
     setNotes(getNotes());
-    setUserState(getCurrentUser());
+    const user = getCurrentUser();
+    if (user) {
+      setUserState(user);
+    }
   };
 
   const handleUserChange = (newUser: User) => {
@@ -176,9 +180,31 @@ export default function App() {
 
   const handleSignOut = () => {
     signOutUser();
-    setUserState(INITIAL_STUDENT_USER);
-    setIsAuthModalOpen(true);
+    setUserState(null);
   };
+
+  // If user hasn't signed in yet when entering the link, display the Sign In page directly!
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white">
+        <SignInPage
+          onSignInSuccess={handleUserChange}
+          deferredPrompt={deferredPrompt}
+          onOpenInstallModal={() => setIsInstallModalOpen(true)}
+          isStandalone={isStandalone}
+        />
+        <InstallAppModal
+          isOpen={isInstallModalOpen}
+          onClose={() => setIsInstallModalOpen(false)}
+          deferredPrompt={deferredPrompt}
+          onInstallSuccess={() => {
+            setIsStandalone(true);
+            setDeferredPrompt(null);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">

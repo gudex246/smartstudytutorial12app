@@ -59,10 +59,10 @@ function setStorage<T>(key: string, value: T): void {
 }
 
 // Current User management
-export function getCurrentUser(): User {
+export function getCurrentUser(): User | null {
   const user = getStorage<User | null>(KEYS.CURRENT_USER, null);
   if (!user || !user.email) {
-    return INITIAL_STUDENT_USER;
+    return null;
   }
   // Check if current user is admin email to ensure admin privileges
   if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
@@ -539,7 +539,7 @@ export function approveStudentPayment(txId: string): { success: boolean; tx?: Pa
 
   // If current logged-in user matches, update current user too
   const current = getCurrentUser();
-  if (current.id === tx.userId || current.email.toLowerCase() === tx.userEmail.toLowerCase()) {
+  if (current && (current.id === tx.userId || current.email.toLowerCase() === tx.userEmail.toLowerCase())) {
     setCurrentUser({
       ...current,
       subscription: activeSub
@@ -572,7 +572,7 @@ export function rejectStudentPayment(txId: string): { success: boolean; tx?: Pay
   updateStudentSubscription(tx.userId, rejectedSub);
 
   const current = getCurrentUser();
-  if (current.id === tx.userId || current.email.toLowerCase() === tx.userEmail.toLowerCase()) {
+  if (current && (current.id === tx.userId || current.email.toLowerCase() === tx.userEmail.toLowerCase())) {
     setCurrentUser({
       ...current,
       subscription: rejectedSub
